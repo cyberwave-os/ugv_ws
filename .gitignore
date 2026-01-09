@@ -4,9 +4,9 @@ install/
 log/
 
 # Python artifacts
-__pycache__/
-*.py[cod]
-*$py.class
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
 *.egg-info/
 .pytest_cache/
 
@@ -21,10 +21,7 @@ ugv.log
 *.mp4
 *.pdf
 *.gv
-*.zip
-*.png
-*.jpg
-*.jpeg
+
 snapshot.mp4
 output_video.mp4
 ugv_description.zip
