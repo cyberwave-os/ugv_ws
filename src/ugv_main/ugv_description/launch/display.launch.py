@@ -22,8 +22,15 @@ def get_rviz_config_file(context):
     rviz_bringup_config = os.path.join(ugv_bringup_dir, 'rviz', 'view_bringup.rviz')
     rviz_slam_2d_config = os.path.join(ugv_slam_dir, 'rviz', 'view_slam_2d.rviz')
     rviz_slam_3d_config = os.path.join(ugv_slam_dir, 'rviz', 'view_slam_3d.rviz')
-    rviz_nav_2d_config = os.path.join(ugv_nav_dir, 'rviz', 'view_nav_2d.rviz')
-    rviz_nav_3d_config = os.path.join(ugv_nav_dir, 'rviz', 'view_nav_3d.rviz')
+    
+    # Only load ugv_nav package if needed for nav configs
+    if rviz_config in ['nav_2d', 'nav_3d']:
+        ugv_nav_dir = get_package_share_directory('ugv_nav')
+        rviz_nav_2d_config = os.path.join(ugv_nav_dir, 'rviz', 'view_nav_2d.rviz')
+        rviz_nav_3d_config = os.path.join(ugv_nav_dir, 'rviz', 'view_nav_3d.rviz')
+    else:
+        rviz_nav_2d_config = rviz_description_config  # fallback
+        rviz_nav_3d_config = rviz_description_config  # fallback
 
     # Map configuration options to corresponding RViz files
     config_map = {

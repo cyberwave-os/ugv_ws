@@ -15,6 +15,7 @@ def generate_launch_description():
     queue_size = LaunchConfiguration('queue_size')
     qos = LaunchConfiguration('qos')
     localization = LaunchConfiguration('localization')
+    use_lidar = LaunchConfiguration('use_lidar')
     
     # Launch arguments
     declare_use_sim_time = DeclareLaunchArgument(
@@ -36,6 +37,11 @@ def generate_launch_description():
         'localization', default_value='false',
         description='Launch in localization mode.'
     )
+    
+    declare_use_lidar = DeclareLaunchArgument(
+        'use_lidar', default_value='false',
+        description='Whether to launch lidar'
+    )
                             
     # Parameters for the SLAM node
     parameters = {
@@ -43,7 +49,7 @@ def generate_launch_description():
             'queue_size': queue_size,
             "subscribe_rgb": True,
             "subscribe_depth": True,
-            'subscribe_scan': True,
+            'subscribe_scan': use_lidar,
             "subscribe_odom_info": False,
             "approx_sync": True,
             "Rtabmap/DetectionRate": "3.5",
@@ -62,7 +68,8 @@ def generate_launch_description():
         launch_arguments={
             'use_rviz': LaunchConfiguration('use_rviz'),
             'rviz_config': 'slam_3d',
-        }.items()
+        }.items(),
+        condition=IfCondition(use_lidar)
     )
         
     # Launch the oak lite bringup launch file
@@ -112,6 +119,7 @@ def generate_launch_description():
         declare_queue_size,
         declare_qos,
         declare_localization,
+        declare_use_lidar,
         bringup_lidar_launch,
         bringup_oak_lite_launch,
         robot_pose_publisher_launch,

@@ -8,19 +8,8 @@ import logging
 import time
 from std_msgs.msg import Header, Float32MultiArray, Float32
 from geometry_msgs.msg import Twist
-from sensor_msgs.msg import Imu, MagneticField, JointState
+from sensor_msgs.msg import Imu, MagneticField
 import math
-import os
-import subprocess
-
-def is_jetson():
-    result = any("ugv_jetson" in root for root, dirs, files in os.walk("/"))
-    return result
-
-if is_jetson():
-    serial_port = '/dev/ttyTHS1'
-else:
-    serial_port = '/dev/ttyAMA0'
 
 # Helper class for reading lines from a serial port
 class ReadLine:
@@ -70,7 +59,8 @@ class BaseController:
             self.data_buffer = json.loads(line)  # Parse JSON data
             self.base_data = self.data_buffer  # Store received data
             return self.base_data  # Return base data
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            self.logger.error(f"JSON decode error: {e} with line: {line}")  # Log error
             self.rl.clear_buffer()  # Clear buffer on error
         except Exception as e:
             self.logger.error(f"[base_ctrl.feedback_data] unexpected error: {e}")
@@ -105,110 +95,76 @@ class ugv_bringup(Node):
         self.imu_mag_publisher_ = self.create_publisher(MagneticField, "imu/mag", 100)
         self.odom_publisher_ = self.create_publisher(Float32MultiArray, "odom/odom_raw", 100)
         self.voltage_publisher_ = self.create_publisher(Float32, "voltage", 50)
-
-        # Subscribers for control commands (Restored for Beast model compatibility)
-        self.cmd_vel_sub_ = self.create_subscription(Twist, "cmd_vel", self.cmd_vel_callback, 10)
-        self.joint_states_sub = self.create_subscription(JointState, 'ugv/joint_states', self.joint_states_callback, 10)
-        self.led_ctrl_sub = self.create_subscription(Float32MultiArray, 'ugv/led_ctrl', self.led_ctrl_callback, 10)
-
         # Initialize the base controller with the UART port and baud rate
-        self.base_controller = BaseController(serial_port, 115200)
+        self.base_controller = BaseController('/dev/ttyAMA0', 115200)
         # Timer to periodically execute the feedback loop
         self.feedback_timer = self.create_timer(0.001, self.feedback_loop)
-
-    # Callback for processing velocity commands
-    def cmd_vel_callback(self, msg):
-        linear_velocity = msg.linear.x
-        angular_velocity = msg.angular.z
-        if linear_velocity == 0:
-            if 0 < angular_velocity < 0.2:
-                angular_velocity = 0.2
-            elif -0.2 < angular_velocity < 0:
-                angular_velocity = -0.2
-        data = {'T': '13', 'X': linear_velocity, 'Z': angular_velocity}
-        self.base_controller.send_command(data)
-
-    # Callback for processing joint state updates
-    def joint_states_callback(self, msg):
-        name = msg.name
-        position = msg.position
-        try:
-            x_rad = position[name.index('pt_base_link_to_pt_link1')]
-            y_rad = position[name.index('pt_link1_to_pt_link2')]
-            x_degree = (180 * x_rad) / 3.1415926
-            y_degree = (180 * y_rad) / 3.1415926
-            joint_data = {'T': 134, 'X': x_degree, 'Y': y_degree, "SX": 600, "SY": 600}
-            self.base_controller.send_command(joint_data)
-        except (ValueError, IndexError):
-            pass
-
-    # Callback for processing LED control commands
-    def led_ctrl_callback(self, msg):
-        if len(msg.data) >= 2:
-            led_ctrl_data = {'T': 132, "IO4": msg.data[0], "IO5": msg.data[1]}
-            self.base_controller.send_command(led_ctrl_data)
 
     # Main loop for reading sensor feedback and publishing it to ROS topics
     def feedback_loop(self):
         self.base_controller.feedback_data()
-        if self.base_controller.base_data["T"] == 1001:
-            self.publish_imu_data_raw()
-            self.publish_imu_mag()
-            self.publish_odom_raw()
-            self.publish_voltage()
+        if self.base_controller.base_data["T"] == 1001:  # Check if the feedback type is correct
+            print(self.base_controller.base_data)
+            self.publish_imu_data_raw()  # Publish IMU raw data
+            self.publish_imu_mag()  # Publish magnetic field data
+            self.publish_odom_raw()  # Publish odometry data
+            self.publish_voltage()  # Publish voltage data
 
     # Publish IMU data to the ROS topic "imu/data_raw"
     def publish_imu_data_raw(self):
         msg = Imu()
         msg.header = Header()
-        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.stamp = self.get_clock().now().to_msg()  # Get the current timestamp
         msg.header.frame_id = "base_imu_link"
         imu_raw_data = self.base_controller.base_data
+
+        # Populate the linear acceleration and angular velocity fields
         msg.linear_acceleration.x = 9.8 * float(imu_raw_data["ax"]) / 8192
         msg.linear_acceleration.y = 9.8 * float(imu_raw_data["ay"]) / 8192
         msg.linear_acceleration.z = 9.8 * float(imu_raw_data["az"]) / 8192
+        
         msg.angular_velocity.x = 3.1415926 * float(imu_raw_data["gx"]) / (16.4 * 180)
         msg.angular_velocity.y = 3.1415926 * float(imu_raw_data["gy"]) / (16.4 * 180)
         msg.angular_velocity.z = 3.1415926 * float(imu_raw_data["gz"]) / (16.4 * 180)
-        self.imu_data_raw_publisher_.publish(msg)
+              
+        self.imu_data_raw_publisher_.publish(msg)  # Publish the IMU data
         
+    # Publish magnetic field data to the ROS topic "imu/mag"
     def publish_imu_mag(self):
         msg = MagneticField()
         msg.header = Header()
-        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.stamp = self.get_clock().now().to_msg()  # Get the current timestamp
         msg.header.frame_id = "base_imu_link"
         imu_raw_data = self.base_controller.base_data
+
+        # Populate the magnetic field data
         msg.magnetic_field.x = float(imu_raw_data["mx"]) * 0.15
         msg.magnetic_field.y = float(imu_raw_data["my"]) * 0.15
         msg.magnetic_field.z = float(imu_raw_data["mz"]) * 0.15
-        self.imu_mag_publisher_.publish(msg)
+              
+        self.imu_mag_publisher_.publish(msg)  # Publish the magnetic field data
 
+    # Publish odometry data to the ROS topic "odom/odom_raw"
     def publish_odom_raw(self):
         odom_raw_data = self.base_controller.base_data
-        array = [odom_raw_data["odl"]/100, odom_raw_data["odr"]/100]
+        array = [odom_raw_data["odl"], odom_raw_data["odr"]]
         msg = Float32MultiArray(data=array)
-        self.odom_publisher_.publish(msg)
+        self.odom_publisher_.publish(msg)  # Publish the odometry data
 
+    # Publish voltage data to the ROS topic "voltage"
     def publish_voltage(self):
         voltage_data = self.base_controller.base_data
-        voltage_value = float(voltage_data["v"])/100
         msg = Float32()
-        msg.data = voltage_value
-        self.voltage_publisher_.publish(msg)
-
-        # OFFICIAL AUDIO ALERT LOGIC:
-        if 0.1 < voltage_value < 9:
-            try:
-                subprocess.run(['aplay', '-D', 'plughw:3,0', '/root/ugv_ws/src/ugv_main/ugv_bringup/ugv_bringup/low_battery.wav'])
-                time.sleep(5)
-            except Exception:
-                pass
+        msg.data = float(voltage_data["v"])
+        self.voltage_publisher_.publish(msg)  # Publish the voltage data
                         
+# Main function to initialize the ROS node and start spinning
 def main(args=None):
-    rclpy.init(args=args)
-    node = ugv_bringup()
-    rclpy.spin(node)
-    rclpy.shutdown()
+    rclpy.init(args=args)  # Initialize ROS
+    node = ugv_bringup()  # Create the UGV bringup node
+    rclpy.spin(node)  # Keep the node running
+    #node.destroy_node()  # (optional) Shutdown the node
+    rclpy.shutdown()  # Shutdown ROS
 
 if __name__ == '__main__':
     main()

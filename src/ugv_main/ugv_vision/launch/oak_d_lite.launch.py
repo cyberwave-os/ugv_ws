@@ -10,7 +10,7 @@ from launch.actions import (
     OpaqueFunction,
 )
 # Import the necessary modules from the launch.conditions package
-from launch.conditions import IfCondition,UnlessCondition
+from launch.conditions import IfCondition
 # Import the necessary modules from the launch.launch_description_sources package
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 # Import the necessary modules from the launch.substitutions package
@@ -46,7 +46,7 @@ def launch_setup(context, *args, **kwargs):
         ),
         # Load the rectify_color_node composable node if the rectify_rgb launch configuration is set to True
         LoadComposableNodes(
-            condition=UnlessCondition(LaunchConfiguration("rectify_rgb")),
+            condition=IfCondition(LaunchConfiguration("rectify_rgb")),
             target_container=name + "_container",
             composable_node_descriptions=[
                 ComposableNode(
@@ -79,7 +79,7 @@ def generate_launch_description():
             "params_file",
             default_value=os.path.join(get_package_share_directory("ugv_vision"), "config", "oak_d_lite.yaml"),
         ),
-        DeclareLaunchArgument("rectify_rgb", default_value="False"),
+        DeclareLaunchArgument("rectify_rgb", default_value="True"),
     ]
 
     # Return the launch description

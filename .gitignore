@@ -1,0 +1,51 @@
+# ROS 2 Build Artifacts
+build/
+install/
+log/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# ROS 2 Log files
+*.log
+base.log
+bringup.log
+driver.log
+ugv.log
+
+# Media and Large Files
+*.mp4
+*.pdf
+*.gv
+*.zip
+snapshot.mp4
+output_video.mp4
+ugv_description.zip
+
+# Temporary/Development Files
+test.py
+check_beast.py
+core
+frame.txt
+map_points.txt
+frames_*.gv
+frames_*.pdf
+
+# IDE and System Files
+.vscode/
+.idea/
+.DS_Store
+.env
+.python-version
+
+# ROS 2 Workspace specifics
+install/
+build/
+log/
+
+src/mqtt_bridge/
+src/test_interface_files/
