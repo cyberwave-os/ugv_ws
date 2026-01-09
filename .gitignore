@@ -49,5 +49,9 @@ install/
 build/
 log/
 
-src/mqtt_bridge/
+# External Libraries (managed by workspace.repos)
+src/navigation2/
+src/BehaviorTree.CPP/
+src/bond_core/
 src/test_interface_files/
+src/vision_opencv/
