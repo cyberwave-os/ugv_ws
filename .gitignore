@@ -22,9 +22,13 @@ ugv.log
 *.pdf
 *.gv
 *.zip
+*.png
+*.jpg
+*.jpeg
 snapshot.mp4
 output_video.mp4
 ugv_description.zip
+images/
 
 # Temporary/Development Files
 test.py
