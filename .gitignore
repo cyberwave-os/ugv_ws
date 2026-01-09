@@ -29,6 +29,7 @@ snapshot.mp4
 output_video.mp4
 ugv_description.zip
 images/
+root/photos/
 
 # Temporary/Development Files
 test.py
